@@ -1,0 +1,45 @@
+make --dry-run --always-make --keep-going --print-directory
+make: Entering directory '/mnt/nfs/homes/anguinau/anguinau/philo'
+ 
+mkdir objs
+echo -ne '	                                                \r'
+echo -e '	objs directory \e[92mcreated\e[0m.'
+echo -ne '	\e[91m-\e[93m-\e[92m>\e[0m[                              ]\e[92m<\e[93m-\e[91m-\e[0m\r'
+ 
+gcc -Wall -Wextra -Werror  -c srcs/main.c -o srcs/main.o -include includes/header.h
+mv srcs/*.o objs
+echo -ne '	                                                \r'
+echo -e '	objs/main.o \e[92mcreated\e[0m.'
+echo -ne '	\e[91m-\e[93m-\e[92m>\e[0m[                              ]\e[92m<\e[93m-\e[91m-\e[0m\r'
+ 
+gcc -Wall -Wextra -Werror  -c srcs/check_input.c -o srcs/check_input.o -include includes/header.h
+mv srcs/*.o objs
+echo -ne '	                                                \r'
+echo -e '	objs/check_input.o \e[92mcreated\e[0m.'
+echo -ne '	\e[91m-\e[93m-\e[92m>\e[0m[\e[91mooooo                            \e[0m]\e[92m<\e[93m-\e[91m-\e[0m[\e[91m15%\e[0m]\r'
+gcc -Wall -Wextra -Werror  -c srcs/states.c -o srcs/states.o -include includes/header.h
+mv srcs/*.o objs
+echo -ne '	                                                \r'
+echo -e '	objs/states.o \e[92mcreated\e[0m.'
+echo -ne '	\e[91m-\e[93m-\e[92m>\e[0m[\e[91moooooooooo                       \e[0m]\e[92m<\e[93m-\e[91m-\e[0m[\e[91m30%\e[0m]\r'
+gcc -Wall -Wextra -Werror  -c srcs/manage_philo.c -o srcs/manage_philo.o -include includes/header.h
+mv srcs/*.o objs
+echo -ne '	                                                \r'
+echo -e '	objs/manage_philo.o \e[92mcreated\e[0m.'
+echo -ne '	\e[91m-\e[93m-\e[92m>\e[0m[\e[93mooooooooooooooo                  \e[0m]\e[92m<\e[93m-\e[91m-\e[0m[\e[93m45%\e[0m]\r'
+gcc -Wall -Wextra -Werror  -c srcs/time.c -o srcs/time.o -include includes/header.h
+mv srcs/*.o objs
+echo -ne '	                                                \r'
+echo -e '	objs/time.o \e[92mcreated\e[0m.'
+echo -ne '	\e[91m-\e[93m-\e[92m>\e[0m[\e[93moooooooooooooooooooo             \e[0m]\e[92m<\e[93m-\e[91m-\e[0m[\e[93m60%\e[0m]\r'
+gcc -Wall -Wextra -Werror  -c srcs/utils.c -o srcs/utils.o -include includes/header.h
+mv srcs/*.o objs
+echo -ne '	                                                \r'
+echo -e '	objs/utils.o \e[92mcreated\e[0m.'
+echo -ne '	\e[91m-\e[93m-\e[92m>\e[0m[\e[92mooooooooooooooooooooooooo        \e[0m]\e[92m<\e[93m-\e[91m-\e[0m[\e[92m75%\e[0m]\r'
+gcc -Wall -Wextra -Werror  -o philo objs/main.o objs/check_input.o objs/states.o objs/manage_philo.o objs/time.o objs/utils.o -L. -lpthread
+echo -ne '	                                                \r'
+echo -e '	philo \e[92mcreated\e[0m.'
+echo -e '	[\e[92m100%\e[0m]'
+make: Leaving directory '/mnt/nfs/homes/anguinau/anguinau/philo'
+ 
