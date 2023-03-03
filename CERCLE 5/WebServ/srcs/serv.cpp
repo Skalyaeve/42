@@ -22,6 +22,7 @@ std::string answ2request(std::string request)
 			}
 			std::string content((std::istreambuf_iterator<char>(file)), (std::istreambuf_iterator<char>()));
 			file.close();
+
 			std::stringstream ss;
 			ss << content.length();
 			std::string header = "HTTP/1.1 200 OK\n";
