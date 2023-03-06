@@ -36,7 +36,7 @@ std::string answ2request(std::string request)
 	return answ;
 }
 
-bool serv(int* serverFd, t_sockaddr_in* address)
+bool serv(void)
 {
 	int newSocket;
 	char buffer[BUFFER_SIZE];

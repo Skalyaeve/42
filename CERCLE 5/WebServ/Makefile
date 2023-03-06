@@ -11,7 +11,8 @@ FLAGS		:= 	-Wall -Wextra -Werror -Wpedantic -g --std=c++98
 ################################################################################
 
 SRCS		:=	srcs/init.cpp	\
-				srcs/serv.cpp
+				srcs/serv.cpp	\
+				srcs/setup.cpp
 HEADERS 	:= 	includes/header.hpp
 OBJS		:= 	${SRCS:.cpp=.o}
 

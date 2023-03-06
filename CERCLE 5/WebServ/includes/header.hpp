@@ -1,17 +1,21 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <string>
 #include <cstring>
+#include <new>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <stdlib.h>
 
-#define IP					INADDR_ANY
-#define PORT				8080
-#define MAX_CONNECTION		30000
-#define BUFFER_SIZE			30000
+// Valeur en octet d'un mega-octet
+#define ONE_MO				1048576
+// Nombre maximum de connexions en attente avant que le serveur ne commence à les refuser
+#define MAX_CONNECTION		42
+
+// Codes erreur
 #define ERR_BAD_REQ			400 // La requête n'est pas correctement formulée.
 #define ERR_UNAUTHORIZED	401 // L'utilisateur n'est pas authentifié.
 #define ERR_FORBIDDEN		403 // L'accès à la ressource est interdit.
@@ -27,7 +31,45 @@
 #define ERR_UNAVAILABLE		503 // Le service est temporairement indisponible.
 #define ERR_GATW_TIMEOUT	504 // Le serveur n'a pas reçu de réponse du service à temps.
 
+// ???
 typedef struct sockaddr_in	t_sockaddr_in;
 typedef struct sockaddr		t_sockaddr;
 
-bool serv(int* serverFd, t_sockaddr_in* address);
+// Donnees d'un bloc location
+typedef struct s_location
+{
+	bool			autoIndex;
+	unsigned short	maxBodySize;
+	unsigned char	methodExcept;
+	std::string		redirect;
+	std::string		root;
+	std::string*	indexPages;
+	std::size_t		locaCount;
+	t_location**	locations;
+}					t_location;
+
+// Donnees d'un bloc serveur
+typedef struct s_serv
+{
+	uint16_t		port;
+	std::string		ip;
+	std::string		serverName;
+	std::string*	errorPages;
+	std::size_t		locaCount;
+	t_location**	locations;
+
+	std::size_t		serverFd;
+	t_sockaddr_in	address;
+}					t_serv;
+
+// Singleton Singleton Singleton-ton-ton
+typedef struct s_data
+{
+	t_serv**	servList;
+	std::size_t	servCount;
+}				t_data;
+
+// Liens
+t_data*	data(void);
+bool	init(const char* path);
+bool	serv(void);

@@ -1,42 +1,38 @@
 #include "../includes/header.hpp"
 
-bool init(int* serverFd, t_sockaddr_in* address)
+// Print un message puis return false
+bool configError(const std::string msg)
 {
-	*serverFd = socket(AF_INET, SOCK_STREAM, 0);
-	if (*serverFd == -1)
-	{
-		std::cerr << "[ ERROR ] Can't create server socket" << std::endl;
-		std::cerr << std::strerror(errno) << std::endl;
-		return false;
-	}
-	(*address).sin_family = AF_INET;
-	(*address).sin_addr.s_addr = htonl(IP);
-	(*address).sin_port = htons(PORT);
+	std::cerr << msg << std::endl;
+	return false;
+}
 
-	std::cout << "Server socket created : " << *serverFd << std::endl;
-	if (bind(*serverFd, reinterpret_cast<t_sockaddr*>(address), sizeof(*address)) < 0)
-	{
-		std::cerr << "[ ERROR ] Can't bind server socket on " << *serverFd;
-		std::cerr << ntohl((*address).sin_addr.s_addr) << ":" << ntohs((*address).sin_port) << std::endl;
-		std::cerr << std::strerror(errno) << std::endl;
-		close(*serverFd);
-		return false;
-	}
-	if (listen(*serverFd, MAX_CONNECTION) < 0)
-	{
-		std::cerr << "[ ERROR ] Can't listen on server socket " << *serverFd;
-		std::cerr << " ( " << ntohl((*address).sin_addr.s_addr) << ":" << ntohs((*address).sin_port) << " )" << std::endl;
-		std::cerr << std::strerror(errno) << std::endl;
-		close(*serverFd);
-		return false;
-	}
-	std::cout << "Listenin : " << ntohl((*address).sin_addr.s_addr) << ":" << ntohs((*address).sin_port) << std::endl;
-	std::cout << "--------------------->> " << std::endl;
+// Return un maxBodySize
+unsigned short getmaxBodySize(const std::string size)
+{
+	unsigned short ret;
+	return ret;
+}
+
+// Compte le nombre de bloc serveur
+std::size_t countServ(std::ifstream& config)
+{
 	return true;
 }
 
-bool setup(char* path)
+// Parse un bloc serveur
+bool parseServ(const std::size_t count, std::ifstream& config)
 {
+	return true;
+}
+
+// Setup de webServ
+bool init(const char* path)
+{
+	// Init la singleton
+	data();
+
+	// Ouvre la config
 	std::ifstream config(path);
 	if (!config)
 	{
@@ -44,25 +40,45 @@ bool setup(char* path)
 		std::cerr << std::strerror(errno) << std::endl;
 		return false;
 	}
-	config.close();
-	return true;
-}
 
-int main(int ac, char** av)
-{
-	int serverFd;
-	t_sockaddr_in address;
+	// Init les blocs serveur
+	if ((data()->servCount = countServ(config)) <= 0)
+		return false;
+	data()->servList = new t_serv*[data()->servCount];
 
-	if (ac != 2)
+	// Parse la config
+	std::string line;
+	std::size_t count = 0;
+	unsigned short maxBodySize = 10;
+	while (std::getline(config, line))
 	{
-		std::cerr << "[ ERROR ] Usage : ./webserv [configuration file]" << std::endl;
-		return EXIT_FAILURE;
+		std::istringstream stream(line);
+		std::string word;
+
+		// Parse une ligne
+		while (stream >> word)
+		{
+			if (word == "#")
+				break;
+			if (word == "clientMaxBodySize")
+			{
+				if (stream >> word)
+					maxBodySize = getmaxBodySize(word);
+				else
+					return configError("[ ERROR ] Incorrect input for clientMaxBodySize");
+			}
+			else if (word == "server")
+			{
+				stream >> word;
+				if (!parseServ(count, config))
+					return false;
+				count++;
+			}
+			else
+				return configError("[ ERROR ] Unknow input in config");
+		}
 	}
-	if (!setup(av[1]))
-		return EXIT_FAILURE;
-	if (!init(&serverFd, &address))
-		return EXIT_FAILURE;
-	if (!serv(&serverFd, &address))
-		return EXIT_FAILURE;
-	return EXIT_SUCCESS;
+	config.close();
+
+	return true;
 }
