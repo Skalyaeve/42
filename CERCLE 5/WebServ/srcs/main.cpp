@@ -7,42 +7,12 @@ t_data* data(void)
 	return &global;
 }
 
-// Delete un bloc location
-void deleteLocation(const t_location* location)
-{
-	delete location->indexPages;
-	for (std::size_t z = 0; z < location->locaCount; z++)
-		deleteLocation(location->locations[z]);
-	delete location;
-}
-
-// Exit le programme
-int exitPlease(const short code)
-{
-	// Delete les serveurs
-	for (std::size_t x = 0; x < data()->servCount; x++)
-	{
-		// Delete les pages d'erreur des serveurs
-		delete data()->servList[x]->errorPages;
-	
-		// Delete les blocs location des serveurs
-		for (std::size_t y = 0; y < data()->servList[x]->locaCount; y++)
-			deleteLocation(data()->servList[x]->locations[y]);
-
-		delete data()->servList[x];
-	}
-	if (data()->servCount)
-		delete[] data()->servList;
-
-	return code;
-}
-
 // Setup un socket
-bool setup(const unsigned short index)
+bool setup(t_serv& serv)
 {
 	// Init le socket
-	data()->servList[index]->serverFd = socket(AF_INET, SOCK_STREAM, 0);
-	if (data()->servList[index]->serverFd == -1)
+	serv.serverFd = socket(AF_INET, SOCK_STREAM, 0);
+	if (serv.serverFd == -1)
 	{
 		std::cerr << "[ ERROR ] Can't create server socket" << std::endl;
 		std::cerr << std::strerror(errno) << std::endl;
@@ -50,31 +20,32 @@ bool setup(const unsigned short index)
 	}
 
 	// Setup l'addresse
-	data()->servList[index]->address.sin_family = AF_INET;
-	data()->servList[index]->address.sin_addr.s_addr = htonl(IP);
-	data()->servList[index]->address.sin_port = htons(data()->servList[index]->port);
+	serv.address.sin_family = AF_INET;
+	serv.address.sin_addr.s_addr = serv.ip;
+    for (std::size_t x = 0; x < serv.port.size(); x++)
+		serv.address.sin_port = htons(serv.port[x]);
 
 	// Bind le socket a l'addresse
-	std::cout << "Server socket created : " << data()->servList[index]->serverFd << std::endl;
-	if (bind(data()->servList[index]->serverFd, reinterpret_cast<t_sockaddr*>(&(data()->servList[index]->address)), sizeof(data()->servList[index]->address)) < 0)
+	std::cout << "Server socket created : " << serv.serverFd << std::endl;
+	if (bind(serv.serverFd, reinterpret_cast<t_sockaddr*>(&(serv.address)), sizeof(serv.address)) < 0)
 	{
-		std::cerr << "[ ERROR ] Can't bind server socket on " << data()->servList[index]->serverFd;
-		std::cerr << ntohl(data()->servList[index]->address.sin_addr.s_addr) << ":" << ntohs(data()->servList[index]->address.sin_port) << std::endl;
+		std::cerr << "[ ERROR ] Can't bind server socket on " << serv.serverFd;
+		std::cerr << ntohl(serv.address.sin_addr.s_addr) << ":" << ntohs(serv.address.sin_port) << std::endl;
 		std::cerr << std::strerror(errno) << std::endl;
-		close(data()->servList[index]->serverFd);
+		close(serv.serverFd);
 		return false;
 	}
 
 	// Run le socket
-	if (listen(data()->servList[index]->serverFd, MAX_CONNECTION) < 0)
+	if (listen(serv.serverFd, MAX_CONNECTION) < 0)
 	{
-		std::cerr << "[ ERROR ] Can't listen on server socket " << data()->servList[index]->serverFd;
-		std::cerr << " ( " << ntohl(data()->servList[index]->address.sin_addr.s_addr) << ":" << ntohs(data()->servList[index]->address.sin_port) << " )" << std::endl;
+		std::cerr << "[ ERROR ] Can't listen on server socket " << serv.serverFd;
+		std::cerr << " ( " << ntohl(serv.address.sin_addr.s_addr) << ":" << ntohs(serv.address.sin_port) << " )" << std::endl;
 		std::cerr << std::strerror(errno) << std::endl;
-		close(data()->servList[index]->serverFd);
+		close(serv.serverFd);
 		return false;
 	}
-	std::cout << "Listenin : " << ntohl(data()->servList[index]->address.sin_addr.s_addr) << ":" << ntohs(data()->servList[index]->address.sin_port) << std::endl;
+	std::cout << "Listenin : " << ntohl(serv.address.sin_addr.s_addr) << ":" << ntohs(serv.address.sin_port) << std::endl;
 	std::cout << "--------------------->> " << std::endl;
 
 	return true;
@@ -87,16 +58,16 @@ int main(int ac, char** av)
 	if (ac != 2)
 	{
 		std::cerr << "[ ERROR ] Usage : ./webserv [configuration file]" << std::endl;
-		return exitPlease(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 	if (!init(av[1]))
-		return exitPlease(EXIT_FAILURE);
+		return EXIT_FAILURE;
 
 	// Setup les sockets
-	for (std::size_t x = 0; x < data()->servCount; x++)
-		if (!setup(x))
-			return exitPlease(EXIT_FAILURE);
+	for (std::size_t x = 0; x < data()->servList.size(); x++)
+		if (!setup(data()->servList[x]))
+			return EXIT_FAILURE;
 
 	// Start le service
-	return (serv() ? exitPlease(EXIT_SUCCESS) : exitPlease(EXIT_FAILURE));
+	return (serv() ? EXIT_SUCCESS : EXIT_FAILURE);
 }
