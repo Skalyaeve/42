@@ -1,4 +1,4 @@
-#include "../includes/header.hpp"
+#include "../../includes/header.hpp"
 
 std::string answ2request(std::string request)
 {
@@ -40,30 +40,36 @@ bool serv(void)
 {
 	int newSocket;
 	char buffer[BUFFER_SIZE];
-	int addrlen = sizeof(*address);
+	int addrlen = sizeof(data()->servList[0].sock_addr[0].second);
 	std::string answ;
 	while (true)
 	{
-		if ((newSocket = accept(*serverFd, reinterpret_cast<t_sockaddr*>(address), reinterpret_cast<socklen_t*>(&addrlen))) < 0)
+		if ((newSocket = accept(data()->servList[0].sock_addr[0].first, reinterpret_cast<t_sockaddr *>(&data()->servList[0].sock_addr[0].second), reinterpret_cast<socklen_t *>(&addrlen))) < 0)
 		{
-			std::cerr << "[ ERROR ] Can't accept inc connection ";
-			std::cerr << ntohl((*address).sin_addr.s_addr) << ":" << ntohs((*address).sin_port) << std::endl;
+			std::cerr << "[ ERROR ] Can't accept inc connection on " << data()->servList[0].sock_addr[0].first << " from ";
+			std::cerr << ntohl(data()->servList[0].sock_addr[0].second.sin_addr.s_addr) << ":" << ntohs(data()->servList[0].sock_addr[0].second.sin_port) << std::endl;
 			std::cerr << std::strerror(errno) << std::endl;
 		}
-		if (recv(newSocket, &buffer, BUFFER_SIZE, 0) < 0)
+
+		std::size_t total = 0;
+		std::size_t readed = 0;
+		while ((readed = recv(newSocket, buffer, BUFFER_SIZE, 0)) > 0)
 		{
+			total += readed;
+			if (total > static_cast<std::size_t>(data()->servList[0].maxBodySize * ONE_MO))
+				if (send(newSocket, "HTTP/1.1 413 Payload Too Large\r\n\r\n", 34, 0) < 0)
+					std::cerr << "[ ERROR ] Can't answ to " << newSocket << std::endl;
+		}
+
+		if (total < 0)
 			std::cerr << "[ ERROR ] Can't read buffer from " << newSocket << std::endl;
-			std::cerr << std::strerror(errno) << std::endl;
-		}
+
 		std::cout << buffer << std::endl;
 		answ = answ2request(buffer);
 		if (send(newSocket, answ.c_str(), answ.size(), 0) < 0)
-		{
 			std::cerr << "[ ERROR ] Can't answ to " << newSocket << std::endl;
-			std::cerr << std::strerror(errno) << std::endl;
-		}
 		close(newSocket);
 	}
-	close(*serverFd);
+	close(data()->servList[0].sock_addr[0].first);
 	return true;
 }
