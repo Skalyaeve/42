@@ -70,12 +70,13 @@ int main(int ac, char **av)
 		return EXIT_FAILURE;
 	}
 	config.close();
-
-	// Setup les sockets
+	printData();
+	return 0;
+/*	// Setup les sockets
 	// for (std::size_t x = 0; x < data()->servList.size(); x++)
 	if (!setup(data()->servList[0]))
 		return EXIT_FAILURE;
 
 	// Start le service
-	return (serv() ? EXIT_SUCCESS : EXIT_FAILURE);
+	return (serv() ? EXIT_SUCCESS : EXIT_FAILURE);*/
 }

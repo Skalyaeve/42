@@ -1,28 +1,5 @@
 #include "../../includes/header.hpp"
 
-// Check si la redirection HTTP est correcte
-bool checkRedir(const std::string &ref)
-{
-	const std::string keywords[] = {"$scheme://", "$request_uri"};
-
-	if (ref.substr(0, keywords[0].length()) != keywords[0])
-		return false;
-
-	if (ref.substr(ref.length() - keywords[1].length()) != keywords[1])
-		return false;
-
-	return true;
-}
-
-// Check le répertoire de root
-bool checkRootDir(const std::string &ref)
-{
-	struct stat infoStruc;
-	if (stat(ref.c_str(), &infoStruc) != 0)
-		return configError("[ ERROR ] Unable to access path " + ref, false, 0);
-	return S_ISDIR(infoStruc.st_mode);
-}
-
 // Parse un bloc limitExcept
 bool newLimit(std::ifstream &config, std::istringstream &stream, t_location &ref, std::size_t &configLine)
 {
@@ -49,6 +26,7 @@ bool newLimit(std::ifstream &config, std::istringstream &stream, t_location &ref
 			switch (std::distance(keys.begin(), std::find(keys.begin(), keys.end(), word)))
 			{
 			case (4):
+				// Allow
 				if (!(streamBis >> word))
 					return configError("[ ERROR ] " + keywords[4] + ": " + lineIndex.str() + ERR_NO_VAL, false, 0);
 				ip = (word == "all" ? 0 : strToID(word));
@@ -59,6 +37,7 @@ bool newLimit(std::ifstream &config, std::istringstream &stream, t_location &ref
                     return configError("[ ERROR ] " + keywords[4] + ": " + lineIndex.str() + ERR_TM_VAL, false, 0);
 				break;
 			case (5):
+				// Deny
 				if (!(streamBis >> word))
 					return configError("[ ERROR ] " + keywords[4] + ": " + lineIndex.str() + ERR_NO_VAL, false, 0);
 				ip = (word == "all" ? 0 : strToID(word));
@@ -69,9 +48,11 @@ bool newLimit(std::ifstream &config, std::istringstream &stream, t_location &ref
                     return configError("[ ERROR ] " + keywords[4] + ": " + lineIndex.str() + ERR_TM_VAL, false, 0);
 				break;
 			case (6):
+				// Fin de bloc
 				stop = true;
 				break;
 			case (7):
+				// Commentaire
 				stopBis = true;
 				break;
 			default:
@@ -83,11 +64,6 @@ bool newLimit(std::ifstream &config, std::istringstream &stream, t_location &ref
     lineIndex << configLine;
 	if (!stop)
 		return configError("[ ERROR ] " + keywords[0] + ": " + lineIndex.str() + ERR_NO_BRK, false, 0);
-
-	// Init de la map
-	ref.limitExcept["GET"] = std::vector< std::pair< uint32_t, bool > >();
-	ref.limitExcept["POST"] = std::vector< std::pair< uint32_t, bool > >();
-	ref.limitExcept["DELETE"] = std::vector< std::pair< uint32_t, bool > >();
 
 	// Ajoute les inputs aux méthodes concernées
 	bool openned = false;
@@ -120,10 +96,16 @@ bool newLimit(std::ifstream &config, std::istringstream &stream, t_location &ref
 t_location initLoca(const std::string &name)
 {
 	t_location loca;
+
 	loca.name = name;
 	loca.root = "/www/";
 	loca.autoIndex = false;
-	loca.maxBodySize = 4;
+	loca.redirect = std::pair< short, std::string >(-1, std::string());
+
+	loca.limitExcept["GET"] = std::vector< std::pair< uint32_t, bool > >();
+	loca.limitExcept["POST"] = std::vector< std::pair< uint32_t, bool > >();
+	loca.limitExcept["DELETE"] = std::vector< std::pair< uint32_t, bool > >();
+
 	return loca;
 }
 
@@ -140,9 +122,13 @@ bool parseLoca(std::ifstream &config, const std::string &name, t_location &ref, 
 	// Parse le bloc
 	std::string line;
 	bool stop = false;
+	bool autoindexFound = false;
+	bool limitFound = false;
+	bool rootFound = false;
 	while (!stop && std::getline(config, line))
 	{
 		// Parse une ligne
+		std::pair< short, std::string > redirect;
 		std::ostringstream lineIndex;
 		std::istringstream stream(line);
 		std::string word;
@@ -155,19 +141,20 @@ bool parseLoca(std::ifstream &config, const std::string &name, t_location &ref, 
 			{
 			case (0):
 				// Redirection HTTP
-				if (!(stream >> ref.redirect.first))
-                    return configError("[ ERROR ] " + keywords[0] + ": " + lineIndex.str() + ERR_NO_VAL, false, 0);
-                if (ref.redirect.first != 301)
+				if (!(stream >> redirect.first))
+                    return configError("[ ERROR ] " + keywords[0] + ": " + lineIndex.str() + ERR_NO_VAL + " or is invalid", false, 0);
+                if (redirect.first < 0 || redirect.first > 1000)
                     return configError("[ ERROR ] " + keywords[0] + ": " + lineIndex.str() + ERR_BAD_VAL, false, 0);
-                if (!(stream >> ref.redirect.second))
-                    return configError("[ ERROR ] " + keywords[0] + ": " + lineIndex.str() + ERR_NO_VAL, false, 0);
-                if (!checkRedir(ref.redirect.second))
-					return configError("[ ERROR ] " + keywords[0] + ": " + lineIndex.str() + ERR_BAD_VAL, false, 0);
-				if (stream >> word)
-					return configError("[ ERROR ] " + keywords[0] + ": " + lineIndex.str() + ERR_TM_VAL, false, 0);
+                if (stream >> redirect.second)
+					if (stream >> word)
+						return configError("[ ERROR ] " + keywords[0] + ": " + lineIndex.str() + ERR_TM_VAL, false, 0);
+				if (ref.redirect.first == -1)
+					ref.redirect = redirect;
 				break;
 			case (1):
 				// Autoindex
+				if (autoindexFound == true)
+                    return configError("[ ERROR ] " + keywords[1] + ": " + lineIndex.str() + ERR_DUP, false, 0);
 				if (!(stream >> word))
                     return configError("[ ERROR ] " + keywords[1] + ": " + lineIndex.str() + ERR_NO_VAL, false, 0);
                 if (word != "on" && word != "off")
@@ -175,36 +162,36 @@ bool parseLoca(std::ifstream &config, const std::string &name, t_location &ref, 
 				ref.autoIndex = (word == "on" ? true : false);
 				if (stream >> word)
 					return configError("[ ERROR ] " + keywords[1] + ": " + lineIndex.str() + ERR_TM_VAL, false, 0);
+				autoindexFound = true;
 				break;
 			case (2):
 				// LimitExcept
+				if (limitFound == true)
+                    return configError("[ ERROR ] " + keywords[2] + ": " + lineIndex.str() + ERR_DUP, false, 0);
 				if (!newLimit(config, stream, ref, configLine))
 					return false;
+				limitFound = true;
 				break;
 			case (3):
 				// Répertoire de root
+				if (rootFound == true)
+                    return configError("[ ERROR ] " + keywords[3] + ": " + lineIndex.str() + ERR_DUP, false, 0);
 				if (!(stream >> word))
 					return configError("[ ERROR ] " + keywords[3] + ": " + lineIndex.str() + ERR_NO_VAL, false, 0);
 				ref.root = "." + word;
-				if (!checkRootDir(ref.root))
-					return configError("[ ERROR ] " + keywords[3] + ": " + lineIndex.str() + ERR_BAD_VAL, false, 0);
 				if (stream >> word)
 					return configError("[ ERROR ] " + keywords[3] + ": " + lineIndex.str() + ERR_TM_VAL, false, 0);
+				rootFound = true;
 				break;
 			case (4):
 				// Index par défaut
 				if (!(stream >> word))
 					return configError("[ ERROR ] " + keywords[4] + ": " + lineIndex.str() + ERR_NO_VAL, false, 0);
-
-				bool anotherOne;
 				while (!stream.fail())
 				{
-					anotherOne = checkFilename(word);
 					ref.indexPages.push_back(word);
 					stream >> word;
 				}
-				if (anotherOne)
-					return configError("[ ERROR ] " + keywords[4] + ": " + lineIndex.str() + ERR_NO_VAL, false, 0);
 				break;
 			case (5):
 				// Bloc location
@@ -250,6 +237,16 @@ bool setupLoca(std::ifstream &config, std::istringstream &stream, t_serv *servPt
 		return configError("[ ERROR ] location:" + lineIndex.str() + ERR_NO_BRK, false, 0);
 	if (stream >> word)
 		return configError("[ ERROR ] location:" + lineIndex.str() + ERR_TM_VAL, false, 0);
+
+	// On vérifie les doublons
+	const std::size_t size = (servPtr ? (*servPtr).locations.size() : (*locaPtr).locations.size());
+	for (std::size_t x = 0; x < size; x++)
+	{
+		if (servPtr && (*servPtr).locations[x].name == name)
+			return configError("[ ERROR ] A server have duplicated location : " + name, false, 0);
+		else if (locaPtr && (*locaPtr).locations[x].name == name)
+			return configError("[ ERROR ] A location have duplicated location : " + name, false, 0);
+	}
 
 	// Parse le reste du bloc location
 	t_location location;

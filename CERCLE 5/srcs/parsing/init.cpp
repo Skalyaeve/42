@@ -10,19 +10,15 @@ int configError(const std::string &msg, const bool &useErrno, const short &ret)
 }
 
 // Return un maxBodySize
-short getmaxBodySize(std::string &size, const std::size_t &configLine)
+long long getmaxBodySize(std::string &size)
 {
-	std::ostringstream lineIndex;
-	lineIndex << configLine;
-
 	// Check le dernier caractère
-	if (size[size.length() - 1] != 'm')
-		return -1;
-	size.erase(size.end() - 1);
+	if (size[size.length() - 1] == 'm')
+		size.erase(size.end() - 1);
 
 	// Str to short
-	short ret;
-	if (!(ret = std::atoi(size.c_str())) || ret < 0 || ret > 4)
+	long long ret;
+	if (!(ret = std::atoi(size.c_str())) || ret < 0)
 		return -1;
 	return ret;
 }
@@ -38,7 +34,7 @@ bool init(std::ifstream& config)
 
 	// Parse la config
 	std::string line;
-	short maxBodySize = 4;
+	short maxBodySize = -1;
 	std::size_t configLine = 0;
 	while (std::getline(config, line))
 	{
@@ -59,22 +55,24 @@ bool init(std::ifstream& config)
 				break;
 			case (1):
 				// clientMaxBodySize
+				if (maxBodySize != -1)
+                    return configError("[ ERROR ] " + keywords[1] + ": " + lineIndex.str() + ERR_TM_VAL, false, 0);
 				if (!(stream >> word))
-                    return configError("[ ERROR ] " + keywords[1] + ": " + lineIndex.str() + ERR_NO_VAL, false, -1);
-                if ((maxBodySize = getmaxBodySize(word, configLine)) < 0)
-                    return configError("[ ERROR ] " + keywords[1] + ": " + lineIndex.str() + ERR_BAD_VAL, false, -1);
+                    return configError("[ ERROR ] " + keywords[1] + ": " + lineIndex.str() + ERR_NO_VAL, false, 0);
+                if ((maxBodySize = getmaxBodySize(word)) < 0)
+                    return configError("[ ERROR ] " + keywords[1] + ": " + lineIndex.str() + ERR_BAD_VAL, false, 0);
                 if (stream >> word)
-                    return configError("[ ERROR ] " + keywords[1] + ": " + lineIndex.str() + ERR_TM_VAL, false, -1);
+                    return configError("[ ERROR ] " + keywords[1] + ": " + lineIndex.str() + ERR_TM_VAL, false, 0);
                 break;
 			case (2):
 				// Bloc serveur
 				if (!(stream >> word))
-                    return configError("[ ERROR ] " + keywords[2] + ": " + lineIndex.str() + ERR_NO_VAL, false, -1);
+                    return configError("[ ERROR ] " + keywords[2] + ": " + lineIndex.str() + ERR_NO_VAL, false, 0);
                 if (word != "{")
 					return configError("[ ERROR ] " + keywords[2] + ": " + lineIndex.str() + ERR_NO_BRK, false, 0);
 				if (stream >> word)
 					return configError("[ ERROR ] " + keywords[2] + ": " + lineIndex.str() + ERR_TM_VAL, false, 0);
-				if (!parseServ(config, maxBodySize, configLine))
+				if (!parseServ(config, configLine))
 					return false;
 				break;
 			default:
@@ -82,5 +80,12 @@ bool init(std::ifstream& config)
 			}
 		}
 	}
+	if (maxBodySize < 0)
+		maxBodySize = 10;
+
+	// Remplis les maxBodySize unset
+	for (std::size_t x = 0; x < data()->servList.size(); x++)
+		if (data()->servList[x].maxBodySize == -1)
+			data()->servList[x].maxBodySize = maxBodySize;
 	return true;
 }

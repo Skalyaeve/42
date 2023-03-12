@@ -8,3 +8,8 @@ void *ft::memset(void *ptr, const short &value, const std::size_t &num)
 		p[i] = static_cast< char >(value);
 	return ptr;
 }
+
+void printData(void)
+{
+	
+}
